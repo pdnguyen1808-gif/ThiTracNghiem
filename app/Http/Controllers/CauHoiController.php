@@ -2,36 +2,33 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\SortableAndSearchable;
 use App\Models\CauHoi;
 use App\Models\DapAn;
 use App\Models\MonHoc;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rules\Can;
-use VanOns\Laraberg\Laraberg;
 
 class CauHoiController extends Controller
 {
+    use SortableAndSearchable;
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $message = null;
-        $dsCauHoi = CauHoi::all();
-        if ($request->get('sort')['enabel']) {
-            $column = $request->get('sort')['column'];
-            $type = $request->get('sort')['type'];
-            $dsCauHoi = CauHoi::orderBy($column, $type)->get();
-        }
-        if ($request->get('searchKey')) {
-            $searchKey = strtolower($request->get('searchKey'));
-            $dsCauHoi = CauHoi::whereRaw('LOWER(noidung) LIKE ?', ['%' . $searchKey . '%'])->get();
-            $message = count($dsCauHoi) == 0 ? 'Không tìm thấy câu hỏi' : null;
-        }
+        $result = $this->applySortAndSearch(
+            CauHoi::class,
+            $request,
+            'noidung',
+            'Không tìm thấy câu hỏi'
+        );
 
-        $sort = $request->get('sort');
-
-        return view('admin.CauHoi.index', ['dsCauHoi' => $dsCauHoi, 'sort' => $sort, 'message' => $message]);
+        return view('admin.CauHoi.index', [
+            'dsCauHoi' => $result['data'],
+            'sort' => $result['sort'],
+            'message' => $result['message'],
+        ]);
     }
 
 
