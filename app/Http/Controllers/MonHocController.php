@@ -2,32 +2,31 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Traits\SortableAndSearchable;
 use App\Models\MonHoc;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Http\Request;
 
 class MonHocController extends Controller
 {
+    use SortableAndSearchable;
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $message=null;
-        $dsMonHoc = MonHoc::get();
-        if ($request->get('sort')['enabel']) {
-            $column = $request->get('sort')['column'];
-            $type = $request->get('sort')['type'];
-            $dsMonHoc = MonHoc::orderBy($column, $type)->get();
-        }
-        if($request->get('searchKey')) {
-            $searchKey = strtolower($request->get('searchKey'));
-            $dsMonHoc = MonHoc::whereRaw('LOWER(tenmon) LIKE ?', ['%' . $searchKey . '%'])->get();
-            $message = count($dsMonHoc) == 0 ? 'Không tìm thấy môn học' : null;
-        }
+        $result = $this->applySortAndSearch(
+            MonHoc::class,
+            $request,
+            'tenmon',
+            'Không tìm thấy môn học'
+        );
 
-        $sort = $request->get('sort');
-        return view('admin.monhoc.index', ['dsMonHoc' => $dsMonHoc, 'sort' => $sort,'message'=>$message]);
+        return view('admin.monhoc.index', [
+            'dsMonHoc' => $result['data'],
+            'sort' => $result['sort'],
+            'message' => $result['message'],
+        ]);
     }
     /**
      * Show the form for creating a new resource.

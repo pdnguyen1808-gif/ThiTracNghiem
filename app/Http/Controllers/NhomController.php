@@ -2,32 +2,32 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\SortableAndSearchable;
 use App\Models\Nhom;
 use App\Models\User;
 use Illuminate\Http\Request;
 
 class NhomController extends Controller
 {
+    use SortableAndSearchable;
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $message = null;
-        $dsNhom = Nhom::get();
-        if ($request->get('sort')['enabel']) {
-            $column = $request->get('sort')['column'];
-            $type = $request->get('sort')['type'];
-            $dsNhom = Nhom::orderBy($column, $type)->get();
-        }
-        if ($request->get('searchKey')) {
-            $searchKey = strtolower($request->get('searchKey'));
-            $dsNhom = Nhom::whereRaw('LOWER(tennhom) LIKE ?', ['%' . $searchKey . '%'])->get();
-            $message = count($dsNhom) == 0 ? 'Không tìm thấy nhóm' : null;
-        }
+        $result = $this->applySortAndSearch(
+            Nhom::class,
+            $request,
+            'tennhom',
+            'Không tìm thấy nhóm'
+        );
 
-        $sort = $request->get('sort');
-        return view('admin.nhom.index', ['dsNhom' => $dsNhom, 'sort' => $sort, 'message' => $message]);
+        return view('admin.nhom.index', [
+            'dsNhom' => $result['data'],
+            'sort' => $result['sort'],
+            'message' => $result['message'],
+        ]);
     }
 
     /**
@@ -37,26 +37,27 @@ class NhomController extends Controller
     {
         return view('admin.nhom.create');
     }
-    public function adduser(string $id,Request $request)
+    public function adduser(string $id, Request $request)
     {
-        $message = null;
-        $dsUser = User::whereNotIn('id',function($query) use ($id){
+        $baseQuery = User::whereNotIn('id', function ($query) use ($id) {
             $query->select('id_user')
                   ->from('chitietnhom')
-                  ->where('id_nhom',$id);
-        })->get();
-        if ($request->get('sort')['enabel']) {
-            $column = $request->get('sort')['column'];
-            $type = $request->get('sort')['type'];
-            $dsUser = User::orderBy($column, $type)->get();
-        }
-        if ($request->get('searchKey')) {
-            $searchKey = strtolower($request->get('searchKey'));
-            $dsUser = User::whereRaw('LOWER(name) LIKE ?', ['%' . $searchKey . '%'])->get();
-            $message = count($dsUser) == 0 ? 'Không tìm thấy người dùng' : null;
-        }
-        $sort = $request->get('sort');
-        return view('admin.nhom.adduser', ['idNhom'=>$id,'dsUser' => $dsUser, 'sort' => $sort, 'message' => $message]);
+                  ->where('id_nhom', $id);
+        });
+
+        $result = $this->applySortAndSearchToQuery(
+            $baseQuery,
+            $request,
+            'name',
+            'Không tìm thấy người dùng'
+        );
+
+        return view('admin.nhom.adduser', [
+            'idNhom' => $id,
+            'dsUser' => $result['data'],
+            'sort' => $result['sort'],
+            'message' => $result['message'],
+        ]);
     }
     /**
      * Store a newly created resource in storage.
@@ -81,23 +82,21 @@ class NhomController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id,Request $request)
+    public function show(string $id, Request $request)
     {
-        $dsUser = Nhom::find($id)->users;
         $nhom = Nhom::find($id);
-        $message = null;
-        if ($request->get('sort')['enabel']) {
-            $column = $request->get('sort')['column'];
-            $type = $request->get('sort')['type'];
-            $dsUser = Nhom::find($id)->users()->orderBy($column, $type)->get();
-        }
-        if ($request->get('searchKey')) {
-            $searchKey = strtolower($request->get('searchKey'));
-            $dsUser = Nhom::find($id)->users()->whereRaw('LOWER(name) LIKE ?', ['%' . $searchKey . '%'])->get();
-            $message = count($dsUser) == 0 ? 'Không tìm thấy người dùng' : null;
-        }
-        $sort = $request->get('sort');
-        return view('admin.nhom.detail', ['dsUser' => $dsUser,'sort'=>$sort,'nhom'=>$nhom]);
+        $result = $this->applySortAndSearchToRelation(
+            $nhom->users(),
+            $request,
+            'name',
+            'Không tìm thấy người dùng'
+        );
+
+        return view('admin.nhom.detail', [
+            'dsUser' => $result['data'],
+            'sort' => $result['sort'],
+            'nhom' => $nhom,
+        ]);
     }
 
     /**

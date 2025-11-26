@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\SortableAndSearchable;
 use App\Models\ChiTietNhom;
 use App\Models\DeThi;
 use App\Models\GiaoDeThi;
@@ -12,26 +13,25 @@ use Illuminate\Http\Request;
 
 class DeThiController extends Controller
 {
+    use SortableAndSearchable;
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $message = null;
-        $dsDeThi = DeThi::get();
-        if ($request->get('sort')['enabel']) {
-            $column = $request->get('sort')['column'];
-            $type = $request->get('sort')['type'];
-            $dsDeThi = DeThi::orderBy($column, $type)->get();
-        }
-        if ($request->get('searchKey')) {
-            $searchKey = strtolower($request->get('searchKey'));
-            $dsDeThi = DeThi::whereRaw('LOWER(tende) LIKE ?', ['%' . $searchKey . '%'])->get();
-            $message = count($dsDeThi) == 0 ? 'Không tìm thấy nhóm' : null;
-        }
+        $result = $this->applySortAndSearch(
+            DeThi::class,
+            $request,
+            'tende',
+            'Không tìm thấy nhóm'
+        );
 
-        $sort = $request->get('sort');
-        return view('admin.dethi.index', ['dsDeThi' => $dsDeThi, 'sort' => $sort, 'message' => $message]);
+        return view('admin.dethi.index', [
+            'dsDeThi' => $result['data'],
+            'sort' => $result['sort'],
+            'message' => $result['message'],
+        ]);
     }
 
     /**
@@ -121,24 +121,23 @@ class DeThiController extends Controller
      */
     public function show(string $id, Request $request)
     {
-        $dsNhom = DeThi::find($id)->nhoms;
         $deThi = DeThi::find($id);
-        $message = null;
-        if ($request->get('sort')['enabel']) {
-            $column = $request->get('sort')['column'];
-            $type = $request->get('sort')['type'];
-            $dsNhom = DeThi::find($id)->nhoms()->orderBy($column, $type)->get();
-        }
-        if ($request->get('searchKey')) {
-            $searchKey = strtolower($request->get('searchKey'));
-            $dsNhom = DeThi::find($id)->nhoms()->whereRaw('LOWER(name) LIKE ?', ['%' . $searchKey . '%'])->get();
-            $message = count($dsNhom) == 0 ? 'Không tìm thấy người dùng' : null;
-        }
+        $result = $this->applySortAndSearchToRelation(
+            $deThi->nhoms(),
+            $request,
+            'name',
+            'Không tìm thấy người dùng'
+        );
+
         $excludedNhomIds = $deThi->nhoms->pluck('id')->toArray();
         $dsNhomNotInDeThi = Nhom::whereNotIn('id', $excludedNhomIds)->get();
 
-        $sort = $request->get('sort');
-        return view('admin.dethi.detail', ['dsNhom' => $dsNhom, 'sort' => $sort, 'deThi' => $deThi, 'dsNhomNotInDeThi' => $dsNhomNotInDeThi]);
+        return view('admin.dethi.detail', [
+            'dsNhom' => $result['data'],
+            'sort' => $result['sort'],
+            'deThi' => $deThi,
+            'dsNhomNotInDeThi' => $dsNhomNotInDeThi,
+        ]);
     }
     /**
      * Show the form for editing the specified resource.

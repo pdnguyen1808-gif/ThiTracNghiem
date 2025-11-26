@@ -2,33 +2,33 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\SortableAndSearchable;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class UserController extends Controller
 {
+    use SortableAndSearchable;
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $message = null;
-        $dsUser = User::get();
-        if ($request->get('sort')['enabel']) {
-            $column = $request->get('sort')['column'];
-            $type = $request->get('sort')['type'];
-            $dsUser = User::orderBy($column, $type)->get();
-        }
-        if ($request->get('searchKey')) {
-            $searchKey = strtolower($request->get('searchKey'));
-            $dsUser = User::whereRaw('LOWER(name) LIKE ?', ['%' . $searchKey . '%'])->get();
-            $message = count($dsUser) == 0 ? 'Không tìm thấy người dùng' : null;
-        }
-        $sort = $request->get('sort');
-        return view('admin.user.index', ['dsUser' => $dsUser, 'sort' => $sort, 'message' => $message]);
+        $result = $this->applySortAndSearch(
+            User::class,
+            $request,
+            'name',
+            'Không tìm thấy người dùng'
+        );
+
+        return view('admin.user.index', [
+            'dsUser' => $result['data'],
+            'sort' => $result['sort'],
+            'message' => $result['message'],
+        ]);
     }
 
     /**
