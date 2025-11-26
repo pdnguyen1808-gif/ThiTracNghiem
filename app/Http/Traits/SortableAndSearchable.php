@@ -50,7 +50,7 @@ trait SortableAndSearchable
      *
      * @param  \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Eloquent\Relations\Relation  $query  The query builder
      * @param  Request  $request  The HTTP request
-     * @param  string  $searchColumn  The column to search in
+     * @param  string  $searchColumn  The column to search in (must be a valid SQL identifier)
      * @param  string  $notFoundMessage  The message to show when no results are found
      * @return array{data: \Illuminate\Database\Eloquent\Collection, message: string|null, sort: array|null}
      */
@@ -62,10 +62,19 @@ trait SortableAndSearchable
     ): array {
         $message = null;
 
+        // Validate search column is a valid SQL identifier (alphanumeric and underscore only)
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $searchColumn)) {
+            throw new \InvalidArgumentException('Invalid search column name');
+        }
+
         if ($request->get('sort')['enabel']) {
             $column = $request->get('sort')['column'];
             $type = $request->get('sort')['type'];
-            $query = $query->orderBy($column, $type);
+
+            // Validate sort column is a valid SQL identifier
+            if (preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
+                $query = $query->orderBy($column, $type);
+            }
         }
 
         if ($request->get('searchKey')) {
